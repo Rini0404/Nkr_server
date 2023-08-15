@@ -1,22 +1,31 @@
 // src/socket/index.ts
 
-import { Server } from 'ws';
+import { IncomingMessage } from "http";
+import { Duplex } from "stream";
+import { Server, OPEN } from "ws";
 
 export const initializeWebSocket = (server: any) => {
-    const wss = new Server({ server });
-
-    wss.on('connection', (ws) => {
-        console.log('Client connected');
-
-        // Handle messages received from clients
-        ws.on('message', (message) => {
-            console.log(`Received message: ${message}`);
+  const wss = new Server({ noServer: true });
+  console.log("WebSocket server created")
+  server.on('upgrade', (request: IncomingMessage, socket: Duplex, head: Buffer) => {
+    console.log("Received upgrade request:", request.url);
+      if (request.url === "/mySocket") {
+        wss.handleUpgrade(request, socket, head, (ws) => {
+          wss.emit("connection", ws, request);
         });
+      } else {
+        socket.destroy();
+      }
+    }
+  );
 
-        // You can also set up other event listeners, like for handling errors or when the socket closes.
+  wss.on("connection", (ws) => {
+    if (ws.readyState === OPEN) {
+      ws.send("Connected to specific route");
+    }
 
-        ws.send('Welcome to the WebSocket server!');
+    ws.on("message", (message) => {
+      console.log(`Received message: ${message}`);
     });
-
-    return wss; // This can be useful if you need to reference the WebSocket server elsewhere.
+  });
 };
